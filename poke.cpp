@@ -30,7 +30,12 @@ void genPerms(vector<T> &path, size_t permLength) {
     return;
   for (size_t i = permLength; i < path.size(); ++i) {
     swap(path[permLength], path[i]);
+      //TODO: From video (15:17). calculate the weight of the new edge added
+      
     genPerms(path, permLength + 1);
+      
+      //TODO: now subtract that edge weight before the swap cal
+      
     swap(path[permLength], path[i]);
   } // for
 } // genPerms()
@@ -50,9 +55,11 @@ class mainPokeDex {
 public:
     void getOptions(int argc, char** argv);
     void readData();
+    void constructMST();
     
 private:
-    
+    vector<Pokemon*> pokeDex;
+    char mChoice;
 };
 
 /* ****************************** MAIN ************************************** */
@@ -63,7 +70,9 @@ int main(int argc, char** argv) {
     // This should be in all of your projects, speeds up I/O
     ios_base::sync_with_stdio(false);
     
-    
+    mainPokeDex startGame;
+    startGame.getOptions(argc, argv);
+    startGame.readData();
     
     
     return 0;
@@ -96,11 +105,11 @@ void mainPokeDex::getOptions(int argc, char** argv) {
                 exit(0);
             case 'm':
                 if (!strcmp(optarg, "MST")) {
-                    
+                    mChoice = 'a';
                 } else if (!strcmp(optarg, "FASTTSP")) {
-                    
+                    mChoice = 'b';
                 } else if (!strcmp(optarg, "OPTTSP")) {
-                    
+                    mChoice = 'c';
                 } else {
                     cerr << "faulty MODE\n";
                     exit(1);
@@ -121,8 +130,39 @@ void mainPokeDex::readData() {
     cin >> numPokemon;
     
     while (cin >> xCoord >> yCoord) {
-        //create struct. add struct ptrs to vector?
+        //create struct. add struct ptrs  to vector?
+        Pokemon* wildPokemon = new Pokemon;
+        //land is default
+        wildPokemon->xCoord = xCoord;
+        wildPokemon->yCoord = yCoord;
+        
+        if (yCoord < 0 && xCoord < 0) {
+            //sea
+            wildPokemon->terrain = 's';
+        } else if ((yCoord < 0 && xCoord == 0) || (xCoord < 0 &&yCoord == 0)) {
+            //on coast
+            wildPokemon->terrain = 'c';
+        }
+        
+        //add to pokeDex
+        pokeDex.push_back(wildPokemon);
     }
+    
+    if (mChoice == 'a') {
+        constructMST();
+    } else if (mChoice == 'b') {
+        
+    } else {
+        
+    }
+
+    return;
+}
+
+void mainPokeDex::constructMST() {
+    //MST with linear pass. More efficient for our project's dense graphs
+    
+    
     
     
     return;
