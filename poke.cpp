@@ -11,6 +11,8 @@
 #include <vector>
 #include <deque>
 #include <algorithm>
+#include <cmath>
+#include <iomanip>
 #include "xcode_redirect.hpp"
 #include "getopt.h"
 
@@ -41,25 +43,45 @@ void genPerms(vector<T> &path, size_t permLength) {
 } // genPerms()
 
 
+
 //From Instructor Piazza Post
 struct Pokemon {
-    double dist = std::numeric_limits<double>::infinity();
+    double dist = std::numeric_limits<double>::infinity(); //dv ; set root = 0
     int xCoord;
     int yCoord;
-    int parent = -1;
-    bool visited = false;
+    int parent = -1; //pv
+    bool visited = false; //kv
     char terrain = 'l';
 };
+
+class mstComparator {
+public:
+    double operator()(const Pokemon* p1, const Pokemon* p2) {
+        if ((p1->terrain == 'l' && p2->terrain == 's') ||
+            (p1->terrain == 's' && p2->terrain == 'l')) {
+            return std::numeric_limits<double>::infinity();
+        }
+        double firstDif = p1->xCoord - p2->xCoord;
+        double secondDif = p1->yCoord - p2->yCoord;
+        return sqrt((firstDif*firstDif) + (secondDif*secondDif));
+    }
+};
+
 
 class mainPokeDex {
 public:
     void getOptions(int argc, char** argv);
     void readData();
     void constructMST();
+    void print();
     
 private:
     vector<Pokemon*> pokeDex;
-    char mChoice;
+    char mode;
+    double weight = 0;
+    bool sea = false;
+    bool coast = false;
+    bool land = false;
 };
 
 /* ****************************** MAIN ************************************** */
@@ -69,6 +91,9 @@ int main(int argc, char** argv) {
     xcode_redirect(argc, argv);
     // This should be in all of your projects, speeds up I/O
     ios_base::sync_with_stdio(false);
+    
+    cout << std::setprecision(2); //Always show 2 decimal places
+    cout << std::fixed; //Disable scientific notation for large numbers
     
     mainPokeDex startGame;
     startGame.getOptions(argc, argv);
@@ -105,11 +130,11 @@ void mainPokeDex::getOptions(int argc, char** argv) {
                 exit(0);
             case 'm':
                 if (!strcmp(optarg, "MST")) {
-                    mChoice = 'a';
+                    mode = 'a';
                 } else if (!strcmp(optarg, "FASTTSP")) {
-                    mChoice = 'b';
+                    mode = 'b';
                 } else if (!strcmp(optarg, "OPTTSP")) {
-                    mChoice = 'c';
+                    mode = 'c';
                 } else {
                     cerr << "faulty MODE\n";
                     exit(1);
@@ -139,31 +164,98 @@ void mainPokeDex::readData() {
         if (yCoord < 0 && xCoord < 0) {
             //sea
             wildPokemon->terrain = 's';
-        } else if ((yCoord < 0 && xCoord == 0) || (xCoord < 0 &&yCoord == 0)) {
+            if (!sea) {
+                sea = true;
+            }
+        } else if ((yCoord < 0 && xCoord == 0) || (xCoord < 0 && yCoord == 0)) {
             //on coast
             wildPokemon->terrain = 'c';
+            if (!coast) {
+                coast = true;
+            }
+        } else {
+            if (!land) {
+                land = true;
+            }
         }
-        
         //add to pokeDex
         pokeDex.push_back(wildPokemon);
     }
     
-    if (mChoice == 'a') {
+    if (mode == 'a') {
+        if (land && sea && !coast) {
+            cerr << "Cannot construct MST\n";
+            exit(1);
+        }
         constructMST();
-    } else if (mChoice == 'b') {
+        print();
+    } else if (mode == 'b') {
         
     } else {
         
     }
+    
 
     return;
 }
 
 void mainPokeDex::constructMST() {
-    //MST with linear pass. More efficient for our project's dense graphs
+    //PRIM'S ALGORITHM - MST with linear pass. More efficient for dense graphs
     
-    
-    
-    
+    //assign root
+    pokeDex[0]->dist = 0;
+    //loop through this V times
+    for (int i = 0; i < pokeDex.size(); i++) {
+        int j = 0;
+        int targetIndex = -1;
+        double lowestDist = std::numeric_limits<double>::infinity();
+        /* 1. From the set of vertices for which kv is false,
+         select the vertex v having the smallest tentative distance dv. */
+        while (j < pokeDex.size()) {
+            if (!pokeDex[j]->visited && pokeDex[j]->dist < lowestDist) {
+                lowestDist = pokeDex[j]->dist;
+                targetIndex = j;
+            }//if
+            j++;
+        }//while
+        
+        /* 2. Set kv to true. */
+        pokeDex[targetIndex]->visited = true;
+        weight += pokeDex[targetIndex]->dist;
+
+        /* 3. For each vertex w adjacent to v for which kw is false,
+         test whether dw is greater than distance(v,w).
+         If it is, set dw to distance(v,w) and set pw to v. */
+        j = 0;
+        while (j < pokeDex.size()) {
+            if (!pokeDex[j]->visited) {
+                double tempDist = mstComparator()(pokeDex[targetIndex],pokeDex[j]);
+                if (pokeDex[j]->dist > tempDist) {
+                    pokeDex[j]->parent = targetIndex;
+                    //if (pokeDex[j]->dist < std::numeric_limits<double>::infinity()) {
+                    //    weight -= pokeDex[j]->dist;
+                    //}
+                    pokeDex[j]->dist = tempDist;
+                    //weight += pokeDex[j]->dist;
+                }//if
+            }//if
+            j++;
+        }//while
+    }//for
     return;
+}
+
+void mainPokeDex::print() {
+    //print weight
+    cout << weight << '\n';
+    //print edges, with smallest integer first
+    for (int i = 0; i < pokeDex.size(); i++) {
+        if (pokeDex[i]->parent >= 0) {
+            if (i < pokeDex[i]->parent) {
+                cout << i << ' ' << pokeDex[i]->parent << '\n';
+            } else {
+                cout << pokeDex[i]->parent << ' ' << i << '\n';
+            }
+        }
+    }
 }
