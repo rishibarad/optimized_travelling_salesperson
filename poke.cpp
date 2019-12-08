@@ -21,26 +21,7 @@ using namespace std;
 
 
 
-//From genPerms.txt file
-template <typename T>
-void genPerms(vector<T> &path, size_t permLength) {
-  if (path.size() == permLength) {
-    // Do something with the path
-    return;
-  } // if
-  if (!promising(path, permLength))
-    return;
-  for (size_t i = permLength; i < path.size(); ++i) {
-    swap(path[permLength], path[i]);
-      //TODO: From video (15:17). calculate the weight of the new edge added
-      
-    genPerms(path, permLength + 1);
-      
-      //TODO: now subtract that edge weight before the swap cal
-      
-    swap(path[permLength], path[i]);
-  } // for
-} // genPerms()
+
 
 //From Instructor Piazza Post
 struct Pokemon {
@@ -91,15 +72,27 @@ public:
     
     void optTSP();
     
+    void genPerms(vector<int> &path, size_t permLength);
+    
+    bool promising(vector<int> &path, size_t permLength);
+    
+    double lowerbound();
+    
+    //46'
+    void solution();
+    
+    void update();
+    
+    void checknode();
+    
+
+    
+    
     ~mainPokeDex() {
         for (auto p : pokeDex) {
             delete p;
         }
         pokeDex.clear();
-        /*for (auto p : tspCycle) {
-            delete p;
-        }
-        tspCycle.clear();*/
     }
     
 private:
@@ -317,11 +310,57 @@ void mainPokeDex::fastTSP() {
 }
 
 void mainPokeDex::optTSP() {
+    //start with infinity bound until one solution is found
+    //if anything is gonna cost more or equal to the best solution, its now unpromising
+    //How do we get the estimate... It depends on the problem (8:30 in video)
+    //  it needs to be done cheaper than doing the actual work (as long as its cheaper than k!)
+    //  if i can estimate in k^2 and its above the best solution, then it was worth it to not do k! (even k^3 can be cheaper)
+    //  need this estimate function that will always be <= reality
+    //  the estimator can be wrong (UNDERESTIMATE), but it cant be so wrong that you miss the best solution
+    //SINCE I TAKE ALL OF THE VERTICES AND PUT THEM IN A VECTOR, AND THEY CAN ALL CONNECT TO EACH OTHER
+    //ITS ACTUALLY IMPOSSIBLE TO VIOLATE A CONSTRAINT (cuz our only constraint is dont visit a place twice)
     
+    //IF the mst is too expensive for unvisited nodes, than the true cycle will be even more expensive (23')
+    //USE MST FOR ESTIMATE FUNCTION
+    //only run estimate if k < 3 or 4.... Depends on constants for O(k^2) and O(k!)
+    //connecting unvisited nodes (34')
+    //put the current best in a class. change it as a member variable.
+    //you also need to save that full path in a separate vector once you have a new current best
+    //gen perms does it all. the better you can answer the promising question, the faster genperms gets
     
+    //everything is in the promising.
     return;
 }
 
+//From genPerms.txt file
+void mainPokeDex::genPerms(vector<int> &path, size_t permLength) {
+  if (path.size() == permLength) {
+    // Do something with the path
+    return;
+  } // if
+  if (!promising(path, permLength))
+    return;
+  for (size_t i = permLength; i < path.size(); ++i) {
+    swap(path[permLength], path[i]);
+      //TODO: From video (15:17). calculate the weight of the new edge added
+      
+    genPerms(path, permLength + 1);
+      
+      //TODO: now subtract that edge weight before the swap cal
+      
+    swap(path[permLength], path[i]);
+  } // for
+} // genPerms()
+
+bool mainPokeDex::promising(vector<int> &path, size_t permLength) {
+    if (path.size() - permLength <= 3) {
+        return true;
+    }
+    
+    
+    
+    return false;
+}
 void mainPokeDex::printMST() {
     //print weight
     cout << weight << '\n';
