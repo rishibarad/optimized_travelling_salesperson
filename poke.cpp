@@ -19,10 +19,6 @@
 using namespace std;
 
 
-
-
-
-
 //From Instructor Piazza Post
 struct Pokemon {
     double dist = std::numeric_limits<double>::infinity(); //dv
@@ -68,13 +64,11 @@ public:
 
     void fastTSP();
     
-    void printFastTSP();
+    void printTSP();
+        
+    void genPerms(size_t permLength);
     
-    void optTSP();
-    
-    void genPerms(vector<int> &path, size_t permLength);
-    
-    bool promising(vector<int> &path, size_t permLength);
+    bool promising(size_t permLength);
     
     double lowerbound();
     
@@ -98,12 +92,23 @@ public:
 private:
     vector<Pokemon*> pokeDex;
     vector<int> tspCycle;
+    vector<int> bestTspCycle;
     char mode;
     double weight = 0;
+    double bestWeight = std::numeric_limits<double>::infinity();
+    double optMSTCost = 0;
+    //double lowerBound = std::numeric_limits<double>::infinity();
     bool sea = false;
     bool coast = false;
     bool land = false;
 };
+
+
+
+
+
+
+
 
 /* ****************************** MAIN ************************************** */
 
@@ -125,6 +130,14 @@ int main(int argc, char** argv) {
 }
 
 /* ****************************** MAIN ************************************** */
+
+
+
+
+
+
+
+
 
 void mainPokeDex::getOptions(int argc, char** argv) {
     int option_index = 0, option = 0;
@@ -210,8 +223,11 @@ void mainPokeDex::readData() {
         constructMST();
     } else if (mode == 'b') {
         fastTSP();
+        printTSP();
     } else {
-        optTSP();
+        fastTSP();
+        genPerms(1);
+        printTSP();
     }
     
 
@@ -305,62 +321,143 @@ void mainPokeDex::fastTSP() {
             weight += lowestDist;
         }//else
     }
-    printFastTSP();
     return;
 }
 
+
+//start with infinity bound until one solution is found
+//if anything is gonna cost more or equal to the best solution, its now unpromising
+//How do we get the estimate... It depends on the problem (8:30 in video)
+//  it needs to be done cheaper than doing the actual work (as long as its cheaper than k!)
+//  if i can estimate in k^2 and its above the best solution, then it was worth it to not do k! (even k^3 can be cheaper)
+//  need this estimate function that will always be <= reality
+//  the estimator can be wrong (UNDERESTIMATE), but it cant be so wrong that you miss the best solution
+//SINCE I TAKE ALL OF THE VERTICES AND PUT THEM IN A VECTOR, AND THEY CAN ALL CONNECT TO EACH OTHER
+//ITS ACTUALLY IMPOSSIBLE TO VIOLATE A CONSTRAINT (cuz our only constraint is dont visit a place twice)
+
+//IF the mst is too expensive for unvisited nodes, than the true cycle will be even more expensive (23')
+//USE MST FOR ESTIMATE FUNCTION
+//only run estimate if k < 3 or 4.... Depends on constants for O(k^2) and O(k!)
+//connecting unvisited nodes (34')
+//put the current best in a class. change it as a member variable.
+//you also need to save that full path in a separate vector once you have a new current best
+//gen perms does it all. the better you can answer the promising question, the faster genperms gets
+
+//everything is in the promising.
+
+//start with fastTsp? (59')
+/*
 void mainPokeDex::optTSP() {
-    //start with infinity bound until one solution is found
-    //if anything is gonna cost more or equal to the best solution, its now unpromising
-    //How do we get the estimate... It depends on the problem (8:30 in video)
-    //  it needs to be done cheaper than doing the actual work (as long as its cheaper than k!)
-    //  if i can estimate in k^2 and its above the best solution, then it was worth it to not do k! (even k^3 can be cheaper)
-    //  need this estimate function that will always be <= reality
-    //  the estimator can be wrong (UNDERESTIMATE), but it cant be so wrong that you miss the best solution
-    //SINCE I TAKE ALL OF THE VERTICES AND PUT THEM IN A VECTOR, AND THEY CAN ALL CONNECT TO EACH OTHER
-    //ITS ACTUALLY IMPOSSIBLE TO VIOLATE A CONSTRAINT (cuz our only constraint is dont visit a place twice)
+    //GENERATE OPTIMAL TSP (Best Path)
     
-    //IF the mst is too expensive for unvisited nodes, than the true cycle will be even more expensive (23')
-    //USE MST FOR ESTIMATE FUNCTION
-    //only run estimate if k < 3 or 4.... Depends on constants for O(k^2) and O(k!)
-    //connecting unvisited nodes (34')
-    //put the current best in a class. change it as a member variable.
-    //you also need to save that full path in a separate vector once you have a new current best
-    //gen perms does it all. the better you can answer the promising question, the faster genperms gets
-    
-    //everything is in the promising.
+    //generate fastTSP
+    fastTSP();
+    //call to genPerms (Recursive Function)
+    genPerms(1);
+    //print out resulting optTSP
+    printTSP();
     return;
 }
+*/
 
 //From genPerms.txt file
-void mainPokeDex::genPerms(vector<int> &path, size_t permLength) {
-  if (path.size() == permLength) {
+void mainPokeDex::genPerms(size_t permLength) {
+  if (tspCycle.size() == permLength) {
     // Do something with the path
+      //new code
+      if (weight < bestWeight) {
+          bestTspCycle = tspCycle;
+          bestWeight = weight;
+      }
+      //end new code
     return;
   } // if
-  if (!promising(path, permLength))
+  if (!promising(permLength))
     return;
-  for (size_t i = permLength; i < path.size(); ++i) {
-    swap(path[permLength], path[i]);
+  for (size_t i = permLength; i < tspCycle.size(); ++i) {
+    swap(tspCycle[permLength], tspCycle[i]);
       //TODO: From video (15:17). calculate the weight of the new edge added
+      weight += tspCost()(pokeDex[tspCycle[i]],pokeDex[tspCycle[0]]) +
+      tspCost()(pokeDex[tspCycle[i]],pokeDex[tspCycle[permLength-1]]) -
+      tspCost()(pokeDex[tspCycle[0]],pokeDex[tspCycle[permLength-1]]);
       
-    genPerms(path, permLength + 1);
+    genPerms(permLength + 1);
       
-      //TODO: now subtract that edge weight before the swap cal
+      //TODO: now subtract that edge weight before the swap call
+      weight -= tspCost()(pokeDex[tspCycle[i]],pokeDex[tspCycle[0]]) +
+      tspCost()(pokeDex[tspCycle[i]],pokeDex[tspCycle[permLength-1]]) -
+      tspCost()(pokeDex[tspCycle[0]],pokeDex[tspCycle[permLength-1]]);
       
-    swap(path[permLength], path[i]);
+    swap(tspCycle[permLength], tspCycle[i]);
   } // for
 } // genPerms()
 
-bool mainPokeDex::promising(vector<int> &path, size_t permLength) {
-    if (path.size() - permLength <= 3) {
+bool mainPokeDex::promising(size_t permLength) {
+    if (tspCycle.size() - permLength <= 5) {
         return true;
     }
     
     
+    optMSTCost = 0;
+    //TODO: MAKE SURE EVERYTHING IS CHANGED FROM NORMAL MST
+    //TODO: USE NEW WEIGHT VALUE!!!
+        
+    //re-initialize everything to false/infinity
+    for (size_t i = permLength; i < tspCycle.size(); i++) {
+        pokeDex[tspCycle[i]]->dist = std::numeric_limits<double>::infinity();
+        pokeDex[tspCycle[i]]->parent = -1;
+        pokeDex[tspCycle[i]]->visited = false;
+    }
+
+    //assign root
+    pokeDex[tspCycle[permLength]]->dist = 0;
+
+    //loop through this V times
+    for (size_t i = permLength; i < tspCycle.size(); i++) {
+        //TODO: J = permLength??
+        size_t j = permLength;
+        int targetIndex = -1;
+        double lowestDist = std::numeric_limits<double>::infinity();
+        /* 1. From the set of vertices for which kv is false,
+         select the vertex v having the smallest tentative distance dv. */
+        while (j < tspCycle.size()) {
+            if (!pokeDex[tspCycle[j]]->visited &&
+                pokeDex[tspCycle[j]]->dist < lowestDist) {
+                lowestDist = pokeDex[tspCycle[j]]->dist;
+                targetIndex = int(j);
+            }//if
+            j++;
+        }//while
+        
+        /* 2. Set kv to true. */
+        pokeDex[tspCycle[targetIndex]]->visited = true;
+        optMSTCost += pokeDex[tspCycle[targetIndex]]->dist;
+
+        /* 3. For each vertex w adjacent to v for which kw is false,
+         test whether dw is greater than distance(v,w).
+         If it is, set dw to distance(v,w) and set pw to v. */
+        j = permLength;
+        while (j < tspCycle.size()) {
+            if (!pokeDex[tspCycle[j]]->visited) {
+                double tempDist = tspCost()(pokeDex[tspCycle[targetIndex]],pokeDex[tspCycle[j]]);
+                if (pokeDex[tspCycle[j]]->dist > tempDist) {
+                    pokeDex[tspCycle[j]]->parent = targetIndex;
+                    pokeDex[tspCycle[j]]->dist = tempDist;
+                }//if
+            }//if
+            j++;
+        }//while
+    }//for
     
+    if (weight + optMSTCost < bestWeight) {
+        return true;
+    }
     return false;
 }
+
+
+
+
 void mainPokeDex::printMST() {
     //print weight
     cout << weight << '\n';
@@ -376,11 +473,18 @@ void mainPokeDex::printMST() {
     }
 }
 
-
-void mainPokeDex::printFastTSP() {
-    cout << weight << '\n';
+void mainPokeDex::printTSP() {
+    if (mode == 'b') {
+        cout << weight << '\n';
     
-    for (int i = 0; i < int(tspCycle.size()); i++) {
-        cout << tspCycle[i] << ' ';
+        for (int i = 0; i < int(tspCycle.size()); i++) {
+            cout << tspCycle[i] << ' ';
+        }
+    } else {
+        cout << bestWeight << '\n';
+        
+        for (int i = 0; i < int (bestTspCycle.size()); i++) {
+            cout << bestTspCycle[i] << ' ';
+        }
     }
 }
