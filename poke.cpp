@@ -42,11 +42,6 @@ void genPerms(vector<T> &path, size_t permLength) {
   } // for
 } // genPerms()
 
-struct tspPokemon {
-    int xCoord;
-    int yCoord;
-};
-
 //From Instructor Piazza Post
 struct Pokemon {
     double dist = std::numeric_limits<double>::infinity(); //dv
@@ -72,7 +67,7 @@ public:
 
 class tspCost {
 public:
-    double operator()(const tspPokemon* p1, const tspPokemon* p2) {
+    double operator()(const Pokemon* p1, const Pokemon* p2) {
         double firstDif = p1->xCoord - p2->xCoord;
         double secondDif = p1->yCoord - p2->yCoord;
         return sqrt((firstDif*firstDif) + (secondDif*secondDif));
@@ -101,15 +96,15 @@ public:
             delete p;
         }
         pokeDex.clear();
-        for (auto p : tspCycle) {
+        /*for (auto p : tspCycle) {
             delete p;
         }
-        tspCycle.clear();
+        tspCycle.clear();*/
     }
     
 private:
     vector<Pokemon*> pokeDex;
-    vector<tspPokemon*> tspCycle;
+    vector<int> tspCycle;
     char mode;
     double weight = 0;
     bool sea = false;
@@ -188,7 +183,6 @@ void mainPokeDex::readData() {
     cin >> numPokemon;
 
     while (cin >> xCoord >> yCoord) {
-        //create struct. add struct ptrs  to vector?
         Pokemon* wildPokemon = new Pokemon;
         //land is default
         wildPokemon->xCoord = xCoord;
@@ -221,7 +215,6 @@ void mainPokeDex::readData() {
             exit(1);
         }
         constructMST();
-        printMST();
     } else if (mode == 'b') {
         fastTSP();
     } else {
@@ -271,6 +264,7 @@ void mainPokeDex::constructMST() {
             j++;
         }//while
     }//for
+    printMST();
     return;
 }
 
@@ -306,60 +300,49 @@ void mainPokeDex::fastTSP() {
      Sam:  Make sure you're also inserting based on the correct criteria. While the node selected should be arbitrary, make sure you're inserting at the position where the weight added to the TSP is the minimum
      */
     
-    for (unsigned int i = 3; i < pokeDex.size(); i++) {
+    for (unsigned int i = 0; i < pokeDex.size(); i++) {
         if (i < 3) {
             //Initialization
-            for (int i = 0; i < 3; i++) {
-                tspPokemon* initCycle = new tspPokemon;
-                initCycle->xCoord = pokeDex[i]->xCoord;
-                initCycle->yCoord = pokeDex[i]->yCoord;
-                tspCycle.push_back(initCycle);
-                if (i == 2) {
-                    //calculate cost
-                    weight = tspCost()(tspCycle[0],tspCycle[1]) +
-                    tspCost()(tspCycle[1],tspCycle[2]) +
-                    tspCost()(tspCycle[0],tspCycle[2]);
-                }
-            }//for
-
+            tspCycle.push_back(i);
+            if (i == 2) {
+                //calculate cost
+                weight = tspCost()(pokeDex[tspCycle[0]],pokeDex[tspCycle[1]]) +
+                tspCost()(pokeDex[tspCycle[1]],pokeDex[tspCycle[2]]) +
+                tspCost()(pokeDex[tspCycle[0]],pokeDex[tspCycle[2]]);
+            }
         } else {
             int insertIndex = -1;
             double lowestDist = std::numeric_limits<double>::infinity();
-            double tempDist;
-            tspPokemon* tempPoke = new tspPokemon;
-            tempPoke->xCoord = pokeDex[i]->xCoord;
-            tempPoke->yCoord = pokeDex[i]->yCoord;
+            double tempDist = std::numeric_limits<double>::infinity();
             
-            for (unsigned int i = 0; i < tspCycle.size(); i++) {
+            for (unsigned int j = 0; j < tspCycle.size(); j++) {
                 //sqrt(Cost(i,k)) + sqrt(Cost(j,k)) - sqrt(Cost(I,j))
-                if (i != tspCycle.size()-1) {
-                    tempDist = tspCost()(tspCycle[i],tempPoke) +
-                    tspCost()(tspCycle[i+1],tempPoke) -
-                    tspCost()(tspCycle[i],tspCycle[i+1]);
+                if (j != tspCycle.size()-1) {
+                    tempDist = tspCost()(pokeDex[tspCycle[j]],pokeDex[i]) +
+                    tspCost()(pokeDex[tspCycle[j+1]],pokeDex[i]) -
+                    tspCost()(pokeDex[tspCycle[j]],pokeDex[tspCycle[j+1]]);
                 } else {
-                    tempDist = tspCost()(tspCycle[i],tempPoke) +
-                    tspCost()(tspCycle[0],tempPoke) -
-                    tspCost()(tspCycle[i],tspCycle[0]);
+                    tempDist = tspCost()(pokeDex[tspCycle[j]],pokeDex[i]) +
+                    tspCost()(pokeDex[tspCycle[0]],pokeDex[i]) -
+                    tspCost()(pokeDex[tspCycle[j]],pokeDex[tspCycle[0]]);
                 }
-                
                 if (tempDist < lowestDist) {
-                    insertIndex = i;
+                    insertIndex = j;
                     lowestDist = tempDist;
                 }
-                
-            }
+            }//for
             //add after index
             if (insertIndex == tspCycle.size()-1) {
-                tspCycle.push_back(tempPoke);
+                tspCycle.push_back(i);
             } else {
                 //insert
-                tspCycle.insert(tspCycle.begin()+insertIndex, tempPoke);
-            }
+                tspCycle.insert(tspCycle.begin()+insertIndex+1, i);
+            }//else
             //adjust cost
             weight += lowestDist;
-        }
+        }//else
     }
-    
+    printFastTSP();
     return;
 }
 
@@ -386,5 +369,9 @@ void mainPokeDex::printMST() {
 
 
 void mainPokeDex::printFastTSP() {
+    cout << weight << '\n';
     
+    for (int i = 0; i < int(tspCycle.size()); i++) {
+        cout << tspCycle[i] << ' ';
+    }
 }
