@@ -269,37 +269,7 @@ void mainPokeDex::constructMST() {
 }
 
 void mainPokeDex::fastTSP() {
-    /*
-     1. Initialization – Start with a partial tour with just one city i, randomly
-     chosen;
-     find the city j for which cij (distance or cost from i to j) is minimum
-     and build the partial tour (i, j).
-     2. Selection – Given a partial tour, arbitrary select a city k that is not yet
-     in the partial tour.
-     3. Insertion – Find the edge {i, j}, belonging to the partial tour, that
-     minimizes cik + ckj − cij. Insert k between i and j.
-     4. If all cities are inserted then STOP, else go back to 2.
-     */
-    /*
-     keeping a running total of the weight rather than looping at the end to find the weight. I used arbitrary insertion as well and another thing that could speed up things would be to insert 1st three vertices arbitrarily i.e index 0,1 and 2 (and 0 again at the back, but I heard that you can also implement it without inserting 0 before the looping) and then start your looping.
-     */
-    /*
-     If you just choose the next index (for example 3), that is arbitrary enough for arbitrary insertion.
-     */
-    /*
-     Now I have sqrt(Cost(i,k)) + sqrt(Cost(j,k)) - sqrt(Cost(I,j)) which calculates the cost to minimize correctly.
-
-     I am using 0-1-2 w/ arbitrary insertion.
-     */
-    /*
-     Are you doing arbitrary insertion? If so, are you checking the wrap-around with each iteration, i.e. if your path is 0-1-2, then checking to see if 3 lies between 2 and 0?
-     */
-    /*
-     It sounds like your arbitrary insert was slightly off.  When inserting an arbitrary vertex into the subgroup, you look for the smallest change in total distance when inserting between two vertices.  So two vertices A and B normally share an edge, but when inserting the arbitrary vertex between them, it would become A-C-B.  Look through your subgroup and find which pair minimizes: DistAC + DistBC - DistAB.
-
-     Sam:  Make sure you're also inserting based on the correct criteria. While the node selected should be arbitrary, make sure you're inserting at the position where the weight added to the TSP is the minimum
-     */
-    
+    //Fast TSP with Arbitrary Insertion Heuristic
     for (unsigned int i = 0; i < pokeDex.size(); i++) {
         if (i < 3) {
             //Initialization
@@ -332,7 +302,7 @@ void mainPokeDex::fastTSP() {
                 }
             }//for
             //add after index
-            if (insertIndex == tspCycle.size()-1) {
+            if (insertIndex == int(tspCycle.size()-1)) {
                 tspCycle.push_back(i);
             } else {
                 //insert
