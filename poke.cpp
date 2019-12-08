@@ -42,11 +42,14 @@ void genPerms(vector<T> &path, size_t permLength) {
   } // for
 } // genPerms()
 
-
+struct tspPokemon {
+    int xCoord;
+    int yCoord;
+};
 
 //From Instructor Piazza Post
 struct Pokemon {
-    double dist = std::numeric_limits<double>::infinity(); //dv ; set root = 0
+    double dist = std::numeric_limits<double>::infinity(); //dv
     int xCoord;
     int yCoord;
     int parent = -1; //pv
@@ -54,7 +57,7 @@ struct Pokemon {
     char terrain = 'l';
 };
 
-class mstComparator {
+class mstDistance {
 public:
     double operator()(const Pokemon* p1, const Pokemon* p2) {
         if ((p1->terrain == 'l' && p2->terrain == 's') ||
@@ -67,16 +70,46 @@ public:
     }
 };
 
+class tspCost {
+public:
+    double operator()(const tspPokemon* p1, const tspPokemon* p2) {
+        double firstDif = p1->xCoord - p2->xCoord;
+        double secondDif = p1->yCoord - p2->yCoord;
+        return sqrt((firstDif*firstDif) + (secondDif*secondDif));
+    }
+};
+
 
 class mainPokeDex {
 public:
     void getOptions(int argc, char** argv);
+    
     void readData();
+    
     void constructMST();
-    void print();
+    
+    void printMST();
+
+    void fastTSP();
+    
+    void printFastTSP();
+    
+    void optTSP();
+    
+    ~mainPokeDex() {
+        for (auto p : pokeDex) {
+            delete p;
+        }
+        pokeDex.clear();
+        for (auto p : tspCycle) {
+            delete p;
+        }
+        tspCycle.clear();
+    }
     
 private:
     vector<Pokemon*> pokeDex;
+    vector<tspPokemon*> tspCycle;
     char mode;
     double weight = 0;
     bool sea = false;
@@ -153,7 +186,7 @@ void mainPokeDex::readData() {
     int yCoord;
     
     cin >> numPokemon;
-    
+
     while (cin >> xCoord >> yCoord) {
         //create struct. add struct ptrs  to vector?
         Pokemon* wildPokemon = new Pokemon;
@@ -188,11 +221,11 @@ void mainPokeDex::readData() {
             exit(1);
         }
         constructMST();
-        print();
+        printMST();
     } else if (mode == 'b') {
-        
+        fastTSP();
     } else {
-        
+        optTSP();
     }
     
 
@@ -205,8 +238,8 @@ void mainPokeDex::constructMST() {
     //assign root
     pokeDex[0]->dist = 0;
     //loop through this V times
-    for (int i = 0; i < pokeDex.size(); i++) {
-        int j = 0;
+    for (unsigned int i = 0; i < pokeDex.size(); i++) {
+        unsigned int j = 0;
         int targetIndex = -1;
         double lowestDist = std::numeric_limits<double>::infinity();
         /* 1. From the set of vertices for which kv is false,
@@ -229,14 +262,10 @@ void mainPokeDex::constructMST() {
         j = 0;
         while (j < pokeDex.size()) {
             if (!pokeDex[j]->visited) {
-                double tempDist = mstComparator()(pokeDex[targetIndex],pokeDex[j]);
+                double tempDist = mstDistance()(pokeDex[targetIndex],pokeDex[j]);
                 if (pokeDex[j]->dist > tempDist) {
                     pokeDex[j]->parent = targetIndex;
-                    //if (pokeDex[j]->dist < std::numeric_limits<double>::infinity()) {
-                    //    weight -= pokeDex[j]->dist;
-                    //}
                     pokeDex[j]->dist = tempDist;
-                    //weight += pokeDex[j]->dist;
                 }//if
             }//if
             j++;
@@ -245,11 +274,106 @@ void mainPokeDex::constructMST() {
     return;
 }
 
-void mainPokeDex::print() {
+void mainPokeDex::fastTSP() {
+    /*
+     1. Initialization – Start with a partial tour with just one city i, randomly
+     chosen;
+     find the city j for which cij (distance or cost from i to j) is minimum
+     and build the partial tour (i, j).
+     2. Selection – Given a partial tour, arbitrary select a city k that is not yet
+     in the partial tour.
+     3. Insertion – Find the edge {i, j}, belonging to the partial tour, that
+     minimizes cik + ckj − cij. Insert k between i and j.
+     4. If all cities are inserted then STOP, else go back to 2.
+     */
+    /*
+     keeping a running total of the weight rather than looping at the end to find the weight. I used arbitrary insertion as well and another thing that could speed up things would be to insert 1st three vertices arbitrarily i.e index 0,1 and 2 (and 0 again at the back, but I heard that you can also implement it without inserting 0 before the looping) and then start your looping.
+     */
+    /*
+     If you just choose the next index (for example 3), that is arbitrary enough for arbitrary insertion.
+     */
+    /*
+     Now I have sqrt(Cost(i,k)) + sqrt(Cost(j,k)) - sqrt(Cost(I,j)) which calculates the cost to minimize correctly.
+
+     I am using 0-1-2 w/ arbitrary insertion.
+     */
+    /*
+     Are you doing arbitrary insertion? If so, are you checking the wrap-around with each iteration, i.e. if your path is 0-1-2, then checking to see if 3 lies between 2 and 0?
+     */
+    /*
+     It sounds like your arbitrary insert was slightly off.  When inserting an arbitrary vertex into the subgroup, you look for the smallest change in total distance when inserting between two vertices.  So two vertices A and B normally share an edge, but when inserting the arbitrary vertex between them, it would become A-C-B.  Look through your subgroup and find which pair minimizes: DistAC + DistBC - DistAB.
+
+     Sam:  Make sure you're also inserting based on the correct criteria. While the node selected should be arbitrary, make sure you're inserting at the position where the weight added to the TSP is the minimum
+     */
+    
+    for (unsigned int i = 3; i < pokeDex.size(); i++) {
+        if (i < 3) {
+            //Initialization
+            for (int i = 0; i < 3; i++) {
+                tspPokemon* initCycle = new tspPokemon;
+                initCycle->xCoord = pokeDex[i]->xCoord;
+                initCycle->yCoord = pokeDex[i]->yCoord;
+                tspCycle.push_back(initCycle);
+                if (i == 2) {
+                    //calculate cost
+                    weight = tspCost()(tspCycle[0],tspCycle[1]) +
+                    tspCost()(tspCycle[1],tspCycle[2]) +
+                    tspCost()(tspCycle[0],tspCycle[2]);
+                }
+            }//for
+
+        } else {
+            int insertIndex = -1;
+            double lowestDist = std::numeric_limits<double>::infinity();
+            double tempDist;
+            tspPokemon* tempPoke = new tspPokemon;
+            tempPoke->xCoord = pokeDex[i]->xCoord;
+            tempPoke->yCoord = pokeDex[i]->yCoord;
+            
+            for (unsigned int i = 0; i < tspCycle.size(); i++) {
+                //sqrt(Cost(i,k)) + sqrt(Cost(j,k)) - sqrt(Cost(I,j))
+                if (i != tspCycle.size()-1) {
+                    tempDist = tspCost()(tspCycle[i],tempPoke) +
+                    tspCost()(tspCycle[i+1],tempPoke) -
+                    tspCost()(tspCycle[i],tspCycle[i+1]);
+                } else {
+                    tempDist = tspCost()(tspCycle[i],tempPoke) +
+                    tspCost()(tspCycle[0],tempPoke) -
+                    tspCost()(tspCycle[i],tspCycle[0]);
+                }
+                
+                if (tempDist < lowestDist) {
+                    insertIndex = i;
+                    lowestDist = tempDist;
+                }
+                
+            }
+            //add after index
+            if (insertIndex == tspCycle.size()-1) {
+                tspCycle.push_back(tempPoke);
+            } else {
+                //insert
+                tspCycle.insert(tspCycle.begin()+insertIndex, tempPoke);
+            }
+            //adjust cost
+            weight += lowestDist;
+        }
+    }
+    
+    return;
+}
+
+void mainPokeDex::optTSP() {
+    
+    
+    return;
+}
+
+void mainPokeDex::printMST() {
     //print weight
     cout << weight << '\n';
     //print edges, with smallest integer first
-    for (int i = 0; i < pokeDex.size(); i++) {
+    for (int i = 0; i < int(pokeDex.size()); i++) {
         if (pokeDex[i]->parent >= 0) {
             if (i < pokeDex[i]->parent) {
                 cout << i << ' ' << pokeDex[i]->parent << '\n';
@@ -258,4 +382,9 @@ void mainPokeDex::print() {
             }
         }
     }
+}
+
+
+void mainPokeDex::printFastTSP() {
+    
 }
