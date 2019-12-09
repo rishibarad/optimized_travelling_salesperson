@@ -1,6 +1,6 @@
 // Project Identifier: 5949F553E20B650AB0FB2266D3C0822B13D248B0
 //
-//  main.cpp
+//  poke.cpp
 //  project4
 //
 //  Created by Rishi Barad on 12/2/19.
@@ -70,18 +70,6 @@ public:
     
     bool promising(size_t permLength);
     
-    double lowerbound();
-    
-    //46'
-    void solution();
-    
-    void update();
-    
-    void checknode();
-    
-
-    
-    
     ~mainPokeDex() {
         for (auto p : pokeDex) {
             delete p;
@@ -101,12 +89,6 @@ private:
     bool coast = false;
     bool land = false;
 };
-
-
-
-
-
-
 
 
 /* ****************************** MAIN ************************************** */
@@ -129,14 +111,6 @@ int main(int argc, char** argv) {
 }
 
 /* ****************************** MAIN ************************************** */
-
-
-
-
-
-
-
-
 
 void mainPokeDex::getOptions(int argc, char** argv) {
     int option_index = 0, option = 0;
@@ -225,7 +199,6 @@ void mainPokeDex::readData() {
         printTSP();
     } else {
         fastTSP();
-        //TODO: Re-initialize weight
         weight = 0;
         genPerms(1);
         printTSP();
@@ -325,31 +298,6 @@ void mainPokeDex::fastTSP() {
     return;
 }
 
-
-//start with infinity bound until one solution is found
-//if anything is gonna cost more or equal to the best solution, its now unpromising
-//How do we get the estimate... It depends on the problem (8:30 in video)
-//  it needs to be done cheaper than doing the actual work (as long as its cheaper than k!)
-//  if i can estimate in k^2 and its above the best solution, then it was worth it to not do k! (even k^3 can be cheaper)
-//  need this estimate function that will always be <= reality
-//  the estimator can be wrong (UNDERESTIMATE), but it cant be so wrong that you miss the best solution
-//SINCE I TAKE ALL OF THE VERTICES AND PUT THEM IN A VECTOR, AND THEY CAN ALL CONNECT TO EACH OTHER
-//ITS ACTUALLY IMPOSSIBLE TO VIOLATE A CONSTRAINT (cuz our only constraint is dont visit a place twice)
-
-//IF the mst is too expensive for unvisited nodes, than the true cycle will be even more expensive (23')
-//USE MST FOR ESTIMATE FUNCTION
-//only run estimate if k < 3 or 4.... Depends on constants for O(k^2) and O(k!)
-//connecting unvisited nodes (34')
-//put the current best in a class. change it as a member variable.
-//you also need to save that full path in a separate vector once you have a new current best
-//gen perms does it all. the better you can answer the promising question, the faster genperms gets
-
-//everything is in the promising.
-
-//start with fastTsp? (59')
-
-
-//From genPerms.txt file
 void mainPokeDex::genPerms(size_t permLength) {
   if (tspCycle.size() == permLength) {
     // Do something with the path
@@ -429,10 +377,7 @@ bool mainPokeDex::promising(size_t permLength) {
             j++;
         }//while
     }//for
-    
-    //TODO: NEW LINE
-    
-    
+
     double leastWeightA = std::numeric_limits<double>::infinity();
     double leastWeightB = std::numeric_limits<double>::infinity();
 
@@ -448,18 +393,12 @@ bool mainPokeDex::promising(size_t permLength) {
         }
     }
     mstCost += weight + leastWeightA + leastWeightB;
-    
-    /*if (permLength == 1) {
-        mstCost -= leastWeightB;
-    }*/
 
     if (mstCost < bestWeight) {
         return true;
     }
     return false;
 }
-
-
 
 
 void mainPokeDex::printMST() {
