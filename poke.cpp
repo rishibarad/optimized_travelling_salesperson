@@ -354,46 +354,22 @@ void mainPokeDex::genPerms(size_t permLength) {
   if (tspCycle.size() == permLength) {
     // Do something with the path
       weight += tspCost()(pokeDex[tspCycle[0]],pokeDex[tspCycle[tspCycle.size()-1]]);
-      //new code
       if (weight < bestWeight) {
           bestTspCycle = tspCycle;
           bestWeight = weight;
       }
-      //end new code
+      weight -= tspCost()(pokeDex[tspCycle[0]],pokeDex[tspCycle[tspCycle.size()-1]]);
     return;
   } // if
   if (!promising(permLength))
     return;
   for (size_t i = permLength; i < tspCycle.size(); ++i) {
     swap(tspCycle[permLength], tspCycle[i]);
-      //TODO: From video (15:17). calculate the weight of the new edge added
-      /*
-      if (permLength == 1) {
-          weight = tspCost()(pokeDex[tspCycle[permLength]],pokeDex[tspCycle[0]]);
-      } else if (permLength == 2) {
-          weight += tspCost()(pokeDex[tspCycle[permLength]],pokeDex[tspCycle[0]]) +
-          tspCost()(pokeDex[tspCycle[permLength]],pokeDex[tspCycle[1]]);
-      } else {
-          weight += tspCost()(pokeDex[tspCycle[permLength]],pokeDex[tspCycle[0]]) +
-          tspCost()(pokeDex[tspCycle[permLength]],pokeDex[tspCycle[permLength-1]]) -
-          tspCost()(pokeDex[tspCycle[0]],pokeDex[tspCycle[permLength-1]]);
-      }*/
+
       weight += tspCost()(pokeDex[tspCycle[permLength]],pokeDex[tspCycle[permLength-1]]);
       
     genPerms(permLength + 1);
-      
-      //TODO: now subtract that edge weight before the swap call
-      /*
-      if (permLength == 1) {
-          weight -= tspCost()(pokeDex[tspCycle[permLength]],pokeDex[tspCycle[0]]);
-      } else if (permLength == 2) {
-          weight -= tspCost()(pokeDex[tspCycle[permLength]],pokeDex[tspCycle[0]]) +
-          tspCost()(pokeDex[tspCycle[permLength]],pokeDex[tspCycle[1]]);
-      } else {
-          weight -= tspCost()(pokeDex[tspCycle[permLength]],pokeDex[tspCycle[0]]) +
-          tspCost()(pokeDex[tspCycle[permLength]],pokeDex[tspCycle[permLength-1]]) -
-          tspCost()(pokeDex[tspCycle[0]],pokeDex[tspCycle[permLength-1]]);
-      }*/
+
       weight -= tspCost()(pokeDex[tspCycle[permLength]],pokeDex[tspCycle[permLength-1]]);
 
       
@@ -472,6 +448,10 @@ bool mainPokeDex::promising(size_t permLength) {
         }
     }
     mstCost += weight + leastWeightA + leastWeightB;
+    
+    /*if (permLength == 1) {
+        mstCost -= leastWeightB;
+    }*/
 
     if (mstCost < bestWeight) {
         return true;
