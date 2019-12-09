@@ -96,7 +96,6 @@ private:
     char mode;
     double weight = 0;
     double bestWeight = std::numeric_limits<double>::infinity();
-    double optMSTCost = 0;
     //double lowerBound = std::numeric_limits<double>::infinity();
     bool sea = false;
     bool coast = false;
@@ -226,6 +225,8 @@ void mainPokeDex::readData() {
         printTSP();
     } else {
         fastTSP();
+        //TODO: Re-initialize weight
+        weight = 0;
         genPerms(1);
         printTSP();
     }
@@ -346,24 +347,13 @@ void mainPokeDex::fastTSP() {
 //everything is in the promising.
 
 //start with fastTsp? (59')
-/*
-void mainPokeDex::optTSP() {
-    //GENERATE OPTIMAL TSP (Best Path)
-    
-    //generate fastTSP
-    fastTSP();
-    //call to genPerms (Recursive Function)
-    genPerms(1);
-    //print out resulting optTSP
-    printTSP();
-    return;
-}
-*/
+
 
 //From genPerms.txt file
 void mainPokeDex::genPerms(size_t permLength) {
   if (tspCycle.size() == permLength) {
     // Do something with the path
+      weight += tspCost()(pokeDex[tspCycle[0]],pokeDex[tspCycle[tspCycle.size()-1]]);
       //new code
       if (weight < bestWeight) {
           bestTspCycle = tspCycle;
@@ -377,30 +367,46 @@ void mainPokeDex::genPerms(size_t permLength) {
   for (size_t i = permLength; i < tspCycle.size(); ++i) {
     swap(tspCycle[permLength], tspCycle[i]);
       //TODO: From video (15:17). calculate the weight of the new edge added
-      weight += tspCost()(pokeDex[tspCycle[i]],pokeDex[tspCycle[0]]) +
-      tspCost()(pokeDex[tspCycle[i]],pokeDex[tspCycle[permLength-1]]) -
-      tspCost()(pokeDex[tspCycle[0]],pokeDex[tspCycle[permLength-1]]);
+      /*
+      if (permLength == 1) {
+          weight = tspCost()(pokeDex[tspCycle[permLength]],pokeDex[tspCycle[0]]);
+      } else if (permLength == 2) {
+          weight += tspCost()(pokeDex[tspCycle[permLength]],pokeDex[tspCycle[0]]) +
+          tspCost()(pokeDex[tspCycle[permLength]],pokeDex[tspCycle[1]]);
+      } else {
+          weight += tspCost()(pokeDex[tspCycle[permLength]],pokeDex[tspCycle[0]]) +
+          tspCost()(pokeDex[tspCycle[permLength]],pokeDex[tspCycle[permLength-1]]) -
+          tspCost()(pokeDex[tspCycle[0]],pokeDex[tspCycle[permLength-1]]);
+      }*/
+      weight += tspCost()(pokeDex[tspCycle[permLength]],pokeDex[tspCycle[permLength-1]]);
       
     genPerms(permLength + 1);
       
       //TODO: now subtract that edge weight before the swap call
-      weight -= tspCost()(pokeDex[tspCycle[i]],pokeDex[tspCycle[0]]) +
-      tspCost()(pokeDex[tspCycle[i]],pokeDex[tspCycle[permLength-1]]) -
-      tspCost()(pokeDex[tspCycle[0]],pokeDex[tspCycle[permLength-1]]);
+      /*
+      if (permLength == 1) {
+          weight -= tspCost()(pokeDex[tspCycle[permLength]],pokeDex[tspCycle[0]]);
+      } else if (permLength == 2) {
+          weight -= tspCost()(pokeDex[tspCycle[permLength]],pokeDex[tspCycle[0]]) +
+          tspCost()(pokeDex[tspCycle[permLength]],pokeDex[tspCycle[1]]);
+      } else {
+          weight -= tspCost()(pokeDex[tspCycle[permLength]],pokeDex[tspCycle[0]]) +
+          tspCost()(pokeDex[tspCycle[permLength]],pokeDex[tspCycle[permLength-1]]) -
+          tspCost()(pokeDex[tspCycle[0]],pokeDex[tspCycle[permLength-1]]);
+      }*/
+      weight -= tspCost()(pokeDex[tspCycle[permLength]],pokeDex[tspCycle[permLength-1]]);
+
       
     swap(tspCycle[permLength], tspCycle[i]);
   } // for
 } // genPerms()
 
 bool mainPokeDex::promising(size_t permLength) {
-    if (tspCycle.size() - permLength <= 5) {
+    if (tspCycle.size() - permLength < 5) {
         return true;
     }
     
-    
-    optMSTCost = 0;
-    //TODO: MAKE SURE EVERYTHING IS CHANGED FROM NORMAL MST
-    //TODO: USE NEW WEIGHT VALUE!!!
+    double mstCost = 0;
         
     //re-initialize everything to false/infinity
     for (size_t i = permLength; i < tspCycle.size(); i++) {
@@ -414,7 +420,6 @@ bool mainPokeDex::promising(size_t permLength) {
 
     //loop through this V times
     for (size_t i = permLength; i < tspCycle.size(); i++) {
-        //TODO: J = permLength??
         size_t j = permLength;
         int targetIndex = -1;
         double lowestDist = std::numeric_limits<double>::infinity();
@@ -431,7 +436,7 @@ bool mainPokeDex::promising(size_t permLength) {
         
         /* 2. Set kv to true. */
         pokeDex[tspCycle[targetIndex]]->visited = true;
-        optMSTCost += pokeDex[tspCycle[targetIndex]]->dist;
+        mstCost += pokeDex[tspCycle[targetIndex]]->dist;
 
         /* 3. For each vertex w adjacent to v for which kw is false,
          test whether dw is greater than distance(v,w).
@@ -449,7 +454,26 @@ bool mainPokeDex::promising(size_t permLength) {
         }//while
     }//for
     
-    if (weight + optMSTCost < bestWeight) {
+    //TODO: NEW LINE
+    
+    
+    double leastWeightA = std::numeric_limits<double>::infinity();
+    double leastWeightB = std::numeric_limits<double>::infinity();
+
+    for (size_t i = permLength; i < tspCycle.size(); i++) {
+        double tempWeightA = tspCost()(pokeDex[tspCycle[i]],pokeDex[tspCycle[0]]);
+        if (tempWeightA < leastWeightA) {
+            leastWeightA = tempWeightA;
+        }
+        
+        double tempWeightB = tspCost()(pokeDex[tspCycle[i]],pokeDex[tspCycle[permLength-1]]);
+        if (tempWeightB < leastWeightB) {
+            leastWeightB = tempWeightB;
+        }
+    }
+    mstCost += weight + leastWeightA + leastWeightB;
+
+    if (mstCost < bestWeight) {
         return true;
     }
     return false;
